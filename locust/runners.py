@@ -298,7 +298,7 @@ class Runner:
                     self.cpu_warning_emitted = True
             gevent.sleep(CPU_MONITOR_INTERVAL)
 
-    def start(self, user_count: int, spawn_rate: float, wait: bool = False):
+    def start(self, user_count: int, spawn_rate: float, wait: bool = False, user_classes:list = None):
         """
         Start running a load test
 
@@ -309,6 +309,9 @@ class Runner:
                      started and the call to this method will return immediately.
         """
         self.target_user_count = user_count
+
+        if user_classes is None:
+            user_classes = self.user_classes
 
         if self.state != STATE_RUNNING and self.state != STATE_SPAWNING:
             self.stats.clear_all()
@@ -321,7 +324,7 @@ class Runner:
         if wait and user_count - self.user_count > spawn_rate:
             raise ValueError("wait is True but the amount of users to add is greater than the spawn rate")
 
-        for user_class in self.user_classes:
+        for user_class in user_classes:
             if self.environment.host:
                 user_class.host = self.environment.host
 
@@ -330,7 +333,7 @@ class Runner:
 
         if self._users_dispatcher is None:
             self._users_dispatcher = UsersDispatcher(
-                worker_nodes=[self._local_worker_node], user_classes=self.user_classes
+                worker_nodes=[self._local_worker_node], user_classes=user_classes
             )
 
         logger.info("Ramping to %d users at a rate of %.2f per second" % (user_count, spawn_rate))
@@ -403,7 +406,7 @@ class Runner:
             elif self.shape_last_state == new_state:
                 gevent.sleep(1)
             else:
-                user_count, spawn_rate = new_state
+                user_count, spawn_rate, user_classes = new_state
                 logger.info("Shape test updating to %d users at %.2f spawn rate" % (user_count, spawn_rate))
                 # TODO: This `self.start()` call is blocking until the ramp-up is completed. This can leads
                 #       to unexpected behaviours such as the one in the following example:
@@ -418,7 +421,7 @@ class Runner:
                 #        We should probably use a `gevent.timeout` with a duration a little over
                 #        `(user_count - prev_user_count) / spawn_rate` in order to limit the runtime
                 #        of each load test shape stage.
-                self.start(user_count=user_count, spawn_rate=spawn_rate)
+                self.start(user_count=user_count, spawn_rate=spawn_rate, user_classes=user_classes)
                 self.shape_last_state = new_state
 
     def stop(self):

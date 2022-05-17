@@ -33,7 +33,7 @@ class LoadTestShape:
         """
         return self.runner.user_count
 
-    def tick(self) -> Optional[Tuple[int, float]]:
+    def tick(self) -> Optional[Tuple[int, float, any]]:
         """
         Returns a tuple with 2 elements to control the running load test:
 
